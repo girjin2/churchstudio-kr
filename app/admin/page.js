@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { upload } from '@vercel/blob/client';
 import { supabase } from '../../lib/supabase';
 
 const box = {maxWidth:980,margin:'0 auto',padding:'32px 20px 60px'};
@@ -8,6 +9,12 @@ const card = {background:'#fff',border:'1px solid #e5e7eb',borderRadius:18,paddi
 const input = {width:'100%',padding:'12px 14px',border:'1px solid #cbd5e1',borderRadius:10,fontSize:15,boxSizing:'border-box'};
 const btn = {padding:'11px 16px',border:0,borderRadius:10,background:'#111827',color:'#fff',fontWeight:700,cursor:'pointer'};
 const lightBtn = {...btn,background:'#e5e7eb',color:'#111827'};
+
+function sizeText(bytes){
+  if(bytes>=1024*1024*1024) return `${(bytes/(1024*1024*1024)).toFixed(2)} GB`;
+  if(bytes>=1024*1024) return `${(bytes/(1024*1024)).toFixed(2)} MB`;
+  return `${(bytes/1024).toFixed(1)} KB`;
+}
 
 export default function AdminPage(){
   const [session,setSession]=useState(null);
@@ -20,6 +27,9 @@ export default function AdminPage(){
   const [releases,setReleases]=useState([]);
   const [notice,setNotice]=useState({title:'',body:'',is_pinned:false,is_published:true});
   const [release,setRelease]=useState({version:'',title:'',summary:'',download_url:'',file_name:'',file_size_text:'',sha256:'',is_latest:true,is_published:true});
+  const [uploadFile,setUploadFile]=useState(null);
+  const [uploading,setUploading]=useState(false);
+  const [uploadProgress,setUploadProgress]=useState(0);
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data})=>check(data.session));
@@ -75,13 +85,34 @@ export default function AdminPage(){
     await supabase.from('notices').delete().eq('id',id); await loadAll();
   }
 
+  async function uploadReleaseFile(){
+    if(!uploadFile){ setMessage('먼저 ZIP 파일을 선택해 주세요.'); return; }
+    if(!session?.access_token){ setMessage('로그인 세션을 다시 확인해 주세요.'); return; }
+
+    setMessage(''); setUploading(true); setUploadProgress(0);
+    try{
+      const blob=await upload(`releases/${Date.now()}-${uploadFile.name}`,uploadFile,{
+        access:'public',
+        handleUploadUrl:'/api/blob-upload',
+        clientPayload:JSON.stringify({accessToken:session.access_token}),
+        onUploadProgress:(p)=>setUploadProgress(Math.round(p.percentage||0))
+      });
+      setRelease(r=>({...r,download_url:blob.url,file_name:uploadFile.name,file_size_text:sizeText(uploadFile.size)}));
+      setMessage('파일 업로드가 완료되었습니다. 아래 배포 정보를 확인한 뒤 배포 등록을 누르세요.');
+    }catch(error){
+      setMessage(`파일 업로드 실패: ${error?.message||'알 수 없는 오류'}`);
+    }finally{
+      setUploading(false);
+    }
+  }
+
   async function addRelease(e){
     e.preventDefault(); setMessage('');
     if(!release.version.trim()||!release.title.trim()) return;
     if(release.is_latest) await supabase.from('releases').update({is_latest:false}).eq('is_latest',true);
     const payload={...release,download_url:release.download_url||null,file_name:release.file_name||null,file_size_text:release.file_size_text||null,sha256:release.sha256||null};
     const {error}=await supabase.from('releases').insert(payload);
-    if(error) setMessage(error.message); else { setRelease({version:'',title:'',summary:'',download_url:'',file_name:'',file_size_text:'',sha256:'',is_latest:true,is_published:true}); await loadAll(); }
+    if(error) setMessage(error.message); else { setRelease({version:'',title:'',summary:'',download_url:'',file_name:'',file_size_text:'',sha256:'',is_latest:true,is_published:true}); setUploadFile(null); setUploadProgress(0); await loadAll(); setMessage('배포 등록이 완료되었습니다.'); }
   }
 
   async function deleteRelease(id){
@@ -113,7 +144,7 @@ export default function AdminPage(){
       <div><a href="/" style={{textDecoration:'none',color:'#475569'}}>← 홈페이지</a><h1 style={{margin:'8px 0 0'}}>관리자</h1></div>
       <button style={lightBtn} onClick={()=>supabase.auth.signOut()}>로그아웃</button>
     </div>
-    {message&&<p style={{color:'#b91c1c'}}>{message}</p>}
+    {message&&<p style={{color:message.includes('완료')?'#047857':'#b91c1c',fontWeight:700}}>{message}</p>}
 
     <section style={card}>
       <h2>공지 등록</h2>
@@ -130,6 +161,17 @@ export default function AdminPage(){
     </section>
 
     <section style={card}>
+      <h2>배포 파일 직접 업로드</h2>
+      <p style={{color:'#64748b',marginTop:0}}>ZIP 파일을 선택하면 브라우저에서 Vercel Blob으로 직접 올라갑니다. 대용량 파일이 Vercel 함수 서버를 통과하지 않도록 구성했습니다.</p>
+      <div style={{display:'grid',gap:10}}>
+        <input style={input} type="file" accept=".zip,application/zip,application/x-zip-compressed" onChange={e=>setUploadFile(e.target.files?.[0]||null)} disabled={uploading}/>
+        {uploadFile&&<div style={{fontSize:14,color:'#475569'}}>{uploadFile.name} · {sizeText(uploadFile.size)}</div>}
+        <button type="button" style={{...btn,opacity:uploading?.65:1}} onClick={uploadReleaseFile} disabled={uploading}>{uploading?`업로드 중 ${uploadProgress}%`:'선택한 파일 업로드'}</button>
+        {uploading&&<div style={{height:10,background:'#e5e7eb',borderRadius:999,overflow:'hidden'}}><div style={{height:'100%',width:`${uploadProgress}%`,background:'#111827',transition:'width .2s'}}/></div>}
+      </div>
+    </section>
+
+    <section style={card}>
       <h2>배포 등록</h2>
       <form onSubmit={addRelease} style={{display:'grid',gap:10}}>
         <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:10}}>
@@ -137,19 +179,19 @@ export default function AdminPage(){
           <input style={input} placeholder="배포 제목" value={release.title} onChange={e=>setRelease({...release,title:e.target.value})}/>
         </div>
         <textarea style={{...input,minHeight:90}} placeholder="설명" value={release.summary} onChange={e=>setRelease({...release,summary:e.target.value})}/>
-        <input style={input} placeholder="다운로드 URL" value={release.download_url} onChange={e=>setRelease({...release,download_url:e.target.value})}/>
+        <input style={input} placeholder="다운로드 URL (파일 업로드 후 자동 입력)" value={release.download_url} onChange={e=>setRelease({...release,download_url:e.target.value})}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           <input style={input} placeholder="파일명" value={release.file_name} onChange={e=>setRelease({...release,file_name:e.target.value})}/>
           <input style={input} placeholder="파일 크기" value={release.file_size_text} onChange={e=>setRelease({...release,file_size_text:e.target.value})}/>
         </div>
-        <input style={input} placeholder="SHA-256" value={release.sha256} onChange={e=>setRelease({...release,sha256:e.target.value})}/>
+        <input style={input} placeholder="SHA-256 (선택)" value={release.sha256} onChange={e=>setRelease({...release,sha256:e.target.value})}/>
         <div style={{display:'flex',gap:18,flexWrap:'wrap'}}>
           <label><input type="checkbox" checked={release.is_latest} onChange={e=>setRelease({...release,is_latest:e.target.checked})}/> 최신 버전</label>
           <label><input type="checkbox" checked={release.is_published} onChange={e=>setRelease({...release,is_published:e.target.checked})}/> 공개</label>
         </div>
         <button style={btn}>배포 등록</button>
       </form>
-      <div style={{marginTop:20}}>{releases.map(r=><div key={r.id} style={{borderTop:'1px solid #e5e7eb',padding:'12px 0',display:'flex',justifyContent:'space-between',gap:12}}><div><strong>{r.is_latest?'[최신] ':''}{r.version} · {r.title}</strong><div style={{color:'#64748b',fontSize:14}}>{r.is_published?'공개':'비공개'}</div></div><button style={lightBtn} onClick={()=>deleteRelease(r.id)}>삭제</button></div>)}</div>
+      <div style={{marginTop:20}}>{releases.map(r=><div key={r.id} style={{borderTop:'1px solid #e5e7eb',padding:'12px 0',display:'flex',justifyContent:'space-between',gap:12}}><div><strong>{r.is_latest?'[최신] ':''}{r.version} · {r.title}</strong><div style={{color:'#64748b',fontSize:14}}>{r.is_published?'공개':'비공개'}{r.file_name?` · ${r.file_name}`:''}</div></div><button style={lightBtn} onClick={()=>deleteRelease(r.id)}>삭제</button></div>)}</div>
     </section>
   </main>;
 }
