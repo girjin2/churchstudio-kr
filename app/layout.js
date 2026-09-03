@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'ChurchStudio | 교회 방송과 자막을 한 곳에서',
-  description: '교회 예배 방송, 자막, 카메라 전환과 유튜브 송출을 위한 ChurchStudio 공식 홈페이지입니다.'
+  title: 'ChurchStudio | 교회 예배와 방송을 하나로',
+  description: '예배 자막, PPT, 카메라, 유튜브 송출을 한 곳에서 운영하는 교회 방송 통합 프로그램'
 };
 
 export default function RootLayout({ children }) {
