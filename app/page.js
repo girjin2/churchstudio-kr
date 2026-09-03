@@ -15,6 +15,7 @@ export default function Home() {
           <a href="#features">기능</a>
           <a href="#download">다운로드</a>
           <a href="#support">후원</a>
+          <a href="/admin">관리자</a>
         </nav>
       </header>
 
