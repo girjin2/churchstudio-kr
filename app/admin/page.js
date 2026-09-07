@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const box = {maxWidth:980,margin:'0 auto',padding:'32px 20px 60px'};
@@ -8,6 +8,12 @@ const card = {background:'#fff',border:'1px solid #e5e7eb',borderRadius:18,paddi
 const input = {width:'100%',padding:'12px 14px',border:'1px solid #cbd5e1',borderRadius:10,fontSize:15,boxSizing:'border-box'};
 const btn = {padding:'11px 16px',border:0,borderRadius:10,background:'#111827',color:'#fff',fontWeight:700,cursor:'pointer'};
 const lightBtn = {...btn,background:'#e5e7eb',color:'#111827'};
+
+function parseGitHubReleaseUrl(url=''){
+  const m=url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/(.+)$/i);
+  if(!m) return null;
+  return {owner:m[1],repo:m[2],tag:decodeURIComponent(m[3]),assetName:decodeURIComponent(m[4])};
+}
 
 export default function AdminPage(){
   const [session,setSession]=useState(null);
@@ -18,6 +24,8 @@ export default function AdminPage(){
   const [message,setMessage]=useState('');
   const [notices,setNotices]=useState([]);
   const [releases,setReleases]=useState([]);
+  const [downloadCounts,setDownloadCounts]=useState({});
+  const [downloadLoading,setDownloadLoading]=useState(false);
   const [notice,setNotice]=useState({title:'',body:'',is_pinned:false,is_published:true});
   const [release,setRelease]=useState({version:'',title:'',summary:'',download_url:'',file_name:'',file_size_text:'',sha256:'',is_latest:true,is_published:true});
 
@@ -38,13 +46,46 @@ export default function AdminPage(){
     if(ok) await loadAll();
   }
 
+  async function loadDownloadCounts(rows){
+    setDownloadLoading(true);
+    const counts={};
+    const cache=new Map();
+    try{
+      await Promise.all((rows||[]).map(async r=>{
+        const parsed=parseGitHubReleaseUrl(r.download_url||'');
+        if(!parsed){ counts[r.id]=null; return; }
+        const key=`${parsed.owner}/${parsed.repo}/${parsed.tag}`;
+        let data=cache.get(key);
+        if(!data){
+          const res=await fetch(`https://api.github.com/repos/${encodeURIComponent(parsed.owner)}/${encodeURIComponent(parsed.repo)}/releases/tags/${encodeURIComponent(parsed.tag)}`,{headers:{Accept:'application/vnd.github+json'}});
+          if(!res.ok){ counts[r.id]=null; return; }
+          data=await res.json();
+          cache.set(key,data);
+        }
+        const asset=(data.assets||[]).find(a=>a.name===parsed.assetName) || (data.assets||[]).find(a=>a.browser_download_url===r.download_url);
+        counts[r.id]=asset?asset.download_count:null;
+      }));
+      setDownloadCounts(counts);
+    }catch{
+      setDownloadCounts({});
+    }finally{
+      setDownloadLoading(false);
+    }
+  }
+
   async function loadAll(){
     const [{data:n},{data:r}]=await Promise.all([
       supabase.from('notices').select('*').order('is_pinned',{ascending:false}).order('published_at',{ascending:false}),
       supabase.from('releases').select('*').order('released_at',{ascending:false})
     ]);
-    setNotices(n||[]); setReleases(r||[]);
+    setNotices(n||[]);
+    setReleases(r||[]);
+    await loadDownloadCounts(r||[]);
   }
+
+  const currentTotal=useMemo(()=>Object.values(downloadCounts).reduce((sum,n)=>sum+(typeof n==='number'?n:0),0),[downloadCounts]);
+  const latestRelease=releases.find(r=>r.is_latest)||releases[0]||null;
+  const latestCount=latestRelease && typeof downloadCounts[latestRelease.id]==='number' ? downloadCounts[latestRelease.id] : null;
 
   async function login(e){
     e.preventDefault(); setMessage(''); setLoading(true);
@@ -117,6 +158,21 @@ export default function AdminPage(){
     {message&&<p style={{color:message.includes('완료')?'#047857':'#b91c1c',fontWeight:700}}>{message}</p>}
 
     <section style={card}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <div>
+          <h2 style={{margin:'0 0 8px'}}>다운로드 현황</h2>
+          <p style={{margin:0,color:'#64748b'}}>GitHub Releases의 현재 asset 다운로드 수를 자동으로 읽습니다.</p>
+        </div>
+        <button type="button" style={lightBtn} onClick={()=>loadDownloadCounts(releases)} disabled={downloadLoading}>{downloadLoading?'확인 중...':'새로고침'}</button>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12,marginTop:18}}>
+        <div style={{padding:18,border:'1px solid #e5e7eb',borderRadius:14}}><div style={{fontSize:13,color:'#64748b'}}>최신 배포 파일</div><strong style={{fontSize:28}}>{downloadLoading?'…':latestCount===null?'확인 불가':`${latestCount.toLocaleString()}회`}</strong></div>
+        <div style={{padding:18,border:'1px solid #e5e7eb',borderRadius:14}}><div style={{fontSize:13,color:'#64748b'}}>현재 등록 asset 합계</div><strong style={{fontSize:28}}>{downloadLoading?'…':`${currentTotal.toLocaleString()}회`}</strong></div>
+      </div>
+      <p style={{margin:'14px 0 0',fontSize:13,color:'#92400e'}}>※ GitHub에서 기존 asset을 삭제하고 새 파일로 교체하면 그 파일의 다운로드 수는 0부터 다시 시작합니다. 삭제된 이전 asset의 횟수는 GitHub에서 자동 합산되지 않습니다.</p>
+    </section>
+
+    <section style={card}>
       <h2>공지 등록</h2>
       <form onSubmit={addNotice} style={{display:'grid',gap:10}}>
         <input style={input} placeholder="제목" value={notice.title} onChange={e=>setNotice({...notice,title:e.target.value})}/>
@@ -151,7 +207,10 @@ export default function AdminPage(){
         </div>
         <button style={btn}>배포 등록</button>
       </form>
-      <div style={{marginTop:20}}>{releases.map(r=><div key={r.id} style={{borderTop:'1px solid #e5e7eb',padding:'12px 0',display:'flex',justifyContent:'space-between',gap:12}}><div><strong>{r.is_latest?'[최신] ':''}{r.version} · {r.title}</strong><div style={{color:'#64748b',fontSize:14}}>{r.is_published?'공개':'비공개'}{r.file_name?` · ${r.file_name}`:''}</div></div><button style={lightBtn} onClick={()=>deleteRelease(r.id)}>삭제</button></div>)}</div>
+      <div style={{marginTop:20}}>{releases.map(r=>{
+        const count=downloadCounts[r.id];
+        return <div key={r.id} style={{borderTop:'1px solid #e5e7eb',padding:'12px 0',display:'flex',justifyContent:'space-between',gap:12}}><div><strong>{r.is_latest?'[최신] ':''}{r.version} · {r.title}</strong><div style={{color:'#64748b',fontSize:14}}>{r.is_published?'공개':'비공개'}{r.file_name?` · ${r.file_name}`:''} · 다운로드 {downloadLoading?'확인 중':typeof count==='number'?`${count.toLocaleString()}회`:'확인 불가'}</div></div><button style={lightBtn} onClick={()=>deleteRelease(r.id)}>삭제</button></div>;
+      })}</div>
     </section>
   </main>;
 }
