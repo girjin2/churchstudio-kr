@@ -26,6 +26,7 @@ function noticeDate(value){
 export default function Home() {
   const [latest,setLatest]=useState(null);
   const [downloadCount,setDownloadCount]=useState(null);
+  const [downloadBase,setDownloadBase]=useState(0);
   const [notices,setNotices]=useState([]);
 
   useEffect(()=>{
@@ -44,10 +45,17 @@ export default function Home() {
         .eq('is_published',true)
         .order('is_pinned',{ascending:false})
         .order('published_at',{ascending:false})
-        .limit(10)
-    ]).then(([releaseResult,noticeResult])=>{
+        .limit(10),
+      supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key','download_count_base')
+        .maybeSingle()
+    ]).then(([releaseResult,noticeResult,baseResult])=>{
       setLatest(releaseResult.data||null);
       setNotices(noticeResult.data||[]);
+      const base=Number.parseInt(baseResult.data?.value||'0',10);
+      setDownloadBase(Number.isFinite(base)?base:0);
     });
   },[]);
 
@@ -68,6 +76,8 @@ export default function Home() {
     }
     loadDownloadCount();
   },[latest]);
+
+  const cumulativeDownloadCount=downloadCount===null?null:downloadBase+downloadCount;
 
   return (
     <main>
@@ -118,7 +128,7 @@ export default function Home() {
             {latest?.file_name&&<p className="muted">{latest.file_name}{latest.file_size_text?` · ${latest.file_size_text}`:''}</p>}
             {latest?.download_url&&<>
               <a className="btn" href={latest.download_url}>ChurchStudio 다운로드</a>
-              <p className="muted" style={{marginTop:12,fontSize:14}}>다운로드 {downloadCount===null?'확인 중':`${downloadCount.toLocaleString()}회`}</p>
+              <p className="muted" style={{marginTop:12,fontSize:14}}>누적 다운로드 {cumulativeDownloadCount===null?'확인 중':`${cumulativeDownloadCount.toLocaleString()}회`}</p>
             </>}
           </div>
         </div>
