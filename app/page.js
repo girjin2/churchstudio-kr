@@ -88,6 +88,17 @@ export default function Home() {
 
       <section className="section">
         <div className="wrap">
+          <h2>사용자 의견</h2>
+          <div className="card">
+            <b>가입 사용자 전용 비밀 게시판</b>
+            <p className="muted">사용 중 불편한 점, 개선 의견, 오류 상황을 남겨 주세요. 작성한 글은 본인과 관리자만 확인할 수 있습니다.</p>
+            <a className="btn" href="/feedback">의견 남기기</a>
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="wrap">
           <h2>후원 및 이용 안내</h2>
           <div className="card">
             <b>3~6개월 후원 방식으로 시범 운영합니다.</b>
