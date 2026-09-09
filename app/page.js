@@ -86,7 +86,11 @@ export default function Home() {
           <div className="eyebrow">ChurchStudio 공식 배포 페이지</div>
           <h1>교회 예배와 방송을 하나로</h1>
           <p className="muted">예배 자막, PPT, 카메라, 유튜브 송출을 한 곳에서 운영하는 교회 방송 통합 프로그램</p>
-          <a className="btn" href="#download">{latest?.download_url?'다운로드':'다운로드 준비 중'}</a>
+          <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:18}}>
+            <a className="btn" href="#download">{latest?.download_url?'다운로드':'다운로드 준비 중'}</a>
+            <a className="btn" href="/feedback">회원가입 / 로그인</a>
+            <a className="btn" href="/feedback">비밀 게시판</a>
+          </div>
         </div>
       </section>
 
@@ -134,13 +138,16 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section">
+      <section className="section" id="feedback">
         <div className="wrap">
-          <h2>사용자 의견</h2>
+          <h2>비밀 게시판</h2>
           <div className="card">
-            <b>가입 사용자 전용 비밀 게시판</b>
-            <p className="muted">사용 중 불편한 점, 개선 의견, 오류 상황을 남겨 주세요. 작성한 글은 본인과 관리자만 확인할 수 있습니다.</p>
-            <a className="btn" href="/feedback">의견 남기기</a>
+            <b>가입 사용자 전용 의견 게시판</b>
+            <p className="muted">회원가입 후 사용 중 불편한 점, 개선 의견, 오류 상황을 남길 수 있습니다. 작성한 글은 본인과 관리자만 확인할 수 있습니다.</p>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              <a className="btn" href="/feedback">회원가입 / 로그인</a>
+              <a className="btn" href="/feedback">게시판 들어가기</a>
+            </div>
           </div>
         </div>
       </section>
