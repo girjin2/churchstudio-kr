@@ -14,20 +14,41 @@ function parseGitHubReleaseUrl(url='') {
   };
 }
 
+function noticeDate(value){
+  if(!value) return '';
+  try{
+    return new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));
+  }catch{
+    return '';
+  }
+}
+
 export default function Home() {
   const [latest,setLatest]=useState(null);
   const [downloadCount,setDownloadCount]=useState(null);
+  const [notices,setNotices]=useState([]);
 
   useEffect(()=>{
-    supabase
-      .from('releases')
-      .select('*')
-      .eq('is_published',true)
-      .order('is_latest',{ascending:false})
-      .order('released_at',{ascending:false})
-      .limit(1)
-      .maybeSingle()
-      .then(({data})=>setLatest(data||null));
+    Promise.all([
+      supabase
+        .from('releases')
+        .select('*')
+        .eq('is_published',true)
+        .order('is_latest',{ascending:false})
+        .order('released_at',{ascending:false})
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('notices')
+        .select('*')
+        .eq('is_published',true)
+        .order('is_pinned',{ascending:false})
+        .order('published_at',{ascending:false})
+        .limit(10)
+    ]).then(([releaseResult,noticeResult])=>{
+      setLatest(releaseResult.data||null);
+      setNotices(noticeResult.data||[]);
+    });
   },[]);
 
   useEffect(()=>{
@@ -56,6 +77,23 @@ export default function Home() {
           <h1>교회 예배와 방송을 하나로</h1>
           <p className="muted">예배 자막, PPT, 카메라, 유튜브 송출을 한 곳에서 운영하는 교회 방송 통합 프로그램</p>
           <a className="btn" href="#download">{latest?.download_url?'다운로드':'다운로드 준비 중'}</a>
+        </div>
+      </section>
+
+      <section className="section" id="notice">
+        <div className="wrap">
+          <h2>공지사항</h2>
+          {notices.length===0 ? (
+            <div className="card"><p className="muted" style={{margin:0}}>등록된 공지가 없습니다.</p></div>
+          ) : notices.map(n=>(
+            <div className="card" key={n.id} style={{marginBottom:14}}>
+              <div style={{display:'flex',justifyContent:'space-between',gap:16,alignItems:'baseline',flexWrap:'wrap'}}>
+                <b>{n.is_pinned?'[중요] ':''}{n.title}</b>
+                <span className="muted" style={{fontSize:13}}>{noticeDate(n.published_at||n.created_at)}</span>
+              </div>
+              <p className="muted" style={{whiteSpace:'pre-wrap',marginBottom:0}}>{n.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
