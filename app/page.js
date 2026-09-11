@@ -89,7 +89,7 @@ export default function Home() {
           <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:18}}>
             <a className="btn" href="#download">{latest?.download_url?'다운로드':'다운로드 준비 중'}</a>
             <a className="btn" href="/feedback">회원가입 / 로그인</a>
-            <a className="btn" href="/feedback">비밀 게시판</a>
+            <a className="btn" href="/feedback">사용자 의견</a>
           </div>
         </div>
       </section>
@@ -134,20 +134,6 @@ export default function Home() {
               <a className="btn" href={latest.download_url}>ChurchStudio 다운로드</a>
               <p className="muted" style={{marginTop:12,fontSize:14}}>누적 다운로드 {cumulativeDownloadCount===null?'확인 중':`${cumulativeDownloadCount.toLocaleString()}회`}</p>
             </>}
-          </div>
-        </div>
-      </section>
-
-      <section className="section" id="feedback">
-        <div className="wrap">
-          <h2>비밀 게시판</h2>
-          <div className="card">
-            <b>가입 사용자 전용 의견 게시판</b>
-            <p className="muted">회원가입 후 사용 중 불편한 점, 개선 의견, 오류 상황을 남길 수 있습니다. 작성한 글은 본인과 관리자만 확인할 수 있습니다.</p>
-            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              <a className="btn" href="/feedback">회원가입 / 로그인</a>
-              <a className="btn" href="/feedback">게시판 들어가기</a>
-            </div>
           </div>
         </div>
       </section>
