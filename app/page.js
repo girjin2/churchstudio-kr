@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
+const READER_APK_URL='https://github.com/girjin2/churchstudiokr/releases/download/worship-reader-android/WorshipReader-Android.apk';
+
 function parseGitHubReleaseUrl(url='') {
   const m = url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/releases\/download\/([^/]+)\/(.+)$/i);
   if (!m) return null;
@@ -137,9 +139,10 @@ export default function Home() {
           </div>
 
           <div className="card" style={{marginTop:16}}>
-            <b>예배 리더</b>
-            <p className="muted">태블릿에서 HWPX, DOCX, PPTX, PDF, TXT 설교문과 예배 자료를 바로 읽는 독립 리더입니다. 파일은 서버에 업로드하지 않고 현재 기기에서만 읽습니다.</p>
-            <a className="btn" href="/reader">예배 리더 열기</a>
+            <b>예배 리더 · Android 설치본</b>
+            <p className="muted">갤럭시탭과 Android 기기에 설치해서 사용하는 독립 예배 리더입니다. HWP, HWPX, DOCX, PPT, PPTX, PDF, TXT를 지원하며 파일은 서버에 올리지 않고 기기 안에서 처리합니다.</p>
+            <p className="muted">WorshipReader-Android.apk · 약 4.6 MB · Android 테스트 설치본</p>
+            <a className="btn" href={READER_APK_URL}>예배 리더 APK 다운로드</a>
           </div>
         </div>
       </section>
