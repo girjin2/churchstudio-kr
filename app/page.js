@@ -138,8 +138,8 @@ export default function Home() {
 
           <div className="card" style={{marginTop:16}}>
             <b>예배 리더</b>
-            <p className="muted">태블릿에서 HWPX, DOCX, TXT, PDF 설교문과 예배 자료를 읽는 독립 리더입니다. ChurchStudio 프로그램과 분리되어 동작합니다.</p>
-            <a className="btn" href="https://worship-reader-tablet.girjin2.chatgpt.site/" target="_blank" rel="noreferrer">예배 리더 설치 · 열기</a>
+            <p className="muted">태블릿에서 HWPX, DOCX, PPTX, PDF, TXT 설교문과 예배 자료를 바로 읽는 독립 리더입니다. 파일은 서버에 업로드하지 않고 현재 기기에서만 읽습니다.</p>
+            <a className="btn" href="/reader">예배 리더 열기</a>
           </div>
         </div>
       </section>
