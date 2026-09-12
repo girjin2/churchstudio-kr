@@ -1,0 +1,43 @@
+name: Publish WorshipReader APK Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-reader-apk-once.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: worship-reader-android
+      ASSET: WorshipReader-Android.apk
+      SOURCE_URL: 'https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-e4a0-8206-a59e-2b9b2ec09022/raw?se=2026-09-12T21%3A37%3A53Z&sp=r&sv=2026-02-06&sr=b&scid=666ae206-4cd0-5b46-806a-a01a813e4422&skoid=bb372dd6-3b2a-4af2-b355-c26497ba23cd&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-12T21%3A21%3A29Z&ske=2026-09-13T21%3A21%3A29Z&sks=b&skv=2026-02-06&sig=0O9rZu2f52W3RlzjC6x4%2BALIMpsM%2BtIpQpgs04cXnls%3D'
+      EXPECTED_SHA256: f261a7e344a30b36190d805d59920f7b6acd1cae05a08d4fbd4b06f52fd277fe
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download verified APK artifact
+        run: |
+          curl -L --fail --retry 3 "$SOURCE_URL" -o artifact.zip
+          unzip -o artifact.zip
+          test -f "$ASSET"
+      - name: Verify APK SHA-256
+        run: |
+          ACTUAL="$(sha256sum "$ASSET" | awk '{print $1}')"
+          echo "APK SHA-256: $ACTUAL"
+          test "$ACTUAL" = "$EXPECTED_SHA256"
+      - name: Publish stable public release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            gh release create "$TAG" "$ASSET" \
+              --title '예배 리더 Android' \
+              --notes 'ChurchStudio 예배 리더 Android 설치 파일입니다. HWP/HWPX/DOCX/PPT/PPTX/PDF/TXT 파일을 기기에서 읽을 수 있습니다.'
+          fi
