@@ -135,6 +135,12 @@ export default function Home() {
               <p className="muted" style={{marginTop:12,fontSize:14}}>누적 다운로드 {cumulativeDownloadCount===null?'확인 중':`${cumulativeDownloadCount.toLocaleString()}회`}</p>
             </>}
           </div>
+
+          <div className="card" style={{marginTop:16}}>
+            <b>예배 리더</b>
+            <p className="muted">태블릿에서 HWPX, DOCX, TXT, PDF 설교문과 예배 자료를 읽는 독립 리더입니다. ChurchStudio 프로그램과 분리되어 동작합니다.</p>
+            <a className="btn" href="https://worship-reader-tablet.girjin2.chatgpt.site/" target="_blank" rel="noreferrer">예배 리더 설치 · 열기</a>
+          </div>
         </div>
       </section>
 
